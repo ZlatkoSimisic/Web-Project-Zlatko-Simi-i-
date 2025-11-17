@@ -1,59 +1,61 @@
 <?php
-require_once 'config.php';
+require_once '../config.php';
 
 class BaseDao {
-    protected $connection;
     protected $table;
+    protected $connection;
 
     public function __construct($table) {
-        $this->connection = Database::connect();
         $this->table = $table;
-    }
-
-    public function create($data) {
-        $keys = array_keys($data);
-        $fields = implode(",", $keys);
-        $placeholders = ":" . implode(", :", $keys);
-
-        $sql = "INSERT INTO {$this->table} ($fields) VALUES ($placeholders)";
-        $stmt = $this->connection->prepare($sql);
-        $stmt->execute($data);
-        return $this->connection->lastInsertId();
+        $this->connection = Database::connect();
     }
 
     public function getAll() {
-        $sql = "SELECT * FROM {$this->table}";
-        $stmt = $this->connection->prepare($sql);
+        $stmt = $this->connection->prepare("SELECT * FROM " . $this->table);
         $stmt->execute();
         return $stmt->fetchAll();
     }
 
-    public function getById($idField, $id) {
-        $sql = "SELECT * FROM {$this->table} WHERE {$idField} = :id";
-        $stmt = $this->connection->prepare($sql);
+    public function getById($id) {
+        $idColumn = $this->getIdColumn();
+        $stmt = $this->connection->prepare("SELECT * FROM " . $this->table . " WHERE $idColumn = :id");
         $stmt->bindParam(':id', $id);
         $stmt->execute();
         return $stmt->fetch();
     }
 
-    public function update($idField, $id, $data) {
-        $set = [];
-        foreach ($data as $key => $value) {
-            $set[] = "$key = :$key";
-        }
-        $setStr = implode(", ", $set);
+    public function insert($data) {
+        $columns = implode(", ", array_keys($data));
+        $placeholders = ":" . implode(", :", array_keys($data));
+        $sql = "INSERT INTO " . $this->table . " ($columns) VALUES ($placeholders)";
+        $stmt = $this->connection->prepare($sql);
+        return $stmt->execute($data);
+    }
 
-        $sql = "UPDATE {$this->table} SET {$setStr} WHERE {$idField} = :id";
+    public function update($id, $data) {
+        $idColumn = $this->getIdColumn();
+        $fields = "";
+        foreach ($data as $key => $value) {
+            $fields .= "$key = :$key, ";
+        }
+        $fields = rtrim($fields, ", ");
+
+        $sql = "UPDATE " . $this->table . " SET $fields WHERE $idColumn = :id";
         $stmt = $this->connection->prepare($sql);
         $data['id'] = $id;
         return $stmt->execute($data);
     }
 
-    public function delete($idField, $id) {
-        $sql = "DELETE FROM {$this->table} WHERE {$idField} = :id";
-        $stmt = $this->connection->prepare($sql);
+    public function delete($id) {
+        $idColumn = $this->getIdColumn();
+        $stmt = $this->connection->prepare("DELETE FROM " . $this->table . " WHERE $idColumn = :id");
         $stmt->bindParam(':id', $id);
         return $stmt->execute();
+    }
+
+    // Automatically determine PK from table name
+    private function getIdColumn() {
+        return $this->table . "ID";
     }
 }
 ?>
