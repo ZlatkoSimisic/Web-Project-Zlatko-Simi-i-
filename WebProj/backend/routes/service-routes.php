@@ -36,7 +36,7 @@ Flight::route('GET /services/@id', function($id){
     Flight::json(Flight::servicesService()->get_service_by_id($id));
 });
 
-/**
+/*
  * @OA\Post(
  *     path="/services",
  *     tags={"services"},
